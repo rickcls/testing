@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Financial Planning Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals (Oat, Stone, Forest Green, Terracotta Accent) -->
+    <!-- Application Structure Plan: The SPA uses a top-down, non-linear navigation structure. A sticky header allows users to jump to any relevant section (Foundations or specific age-based Life Stages) at any time. This is more user-centric than a linear report, as users can immediately access content relevant to their age and interests. The structure prioritizes interaction: key data points are transformed into interactive charts and calculators (e.g., Compounding Simulator, Budget Allocator) to promote exploration and deeper understanding. Each life stage is presented as a self-contained "dashboard" with consistent layouts (cards for goals/challenges, charts for data, accordions for strategies) to make complex information digestible and comparable across stages. This design transforms passive reading into an active learning experience. -->
+    <!-- Visualization & Content Choices: Data from the report is visualized to enhance understanding. Report Table (Compounding effect) -> Goal: Show change over time -> Viz: Interactive Line Chart (Chart.js) -> Interaction: User selects starting age/savings rate to see dynamic growth curves, making the abstract concept of compounding tangible. Report Table (50/30/20 rule) -> Goal: Inform proportions -> Viz: Donut Chart + Input Field (Chart.js/HTML) -> Interaction: User enters income, chart updates to show personalized budget, making the rule actionable. Report Table (Setbacks/Concerns) -> Goal: Compare categories -> Viz: Grouped Bar Chart (Chart.js) -> Interaction: Hover tooltips provide exact percentages, making complex data easy to compare. Report Text (Strategies) -> Goal: Organize dense text -> Presentation: Accordion (HTML/JS) -> Interaction: User clicks to reveal detailed info, preventing information overload and improving readability. This approach systematically converts static data and text into engaging, interactive components. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #FDFBF8; }
+        .bg-warm-base { background-color: #FDFBF8; }
+        .bg-warm-section { background-color: #F5F1E9; }
+        .text-warm-heading { color: #38342E; }
+        .text-warm-body { color: #5a544d; }
+        .text-warm-accent { color: #D97706; } /* Amber-600 */
+        .bg-warm-accent { background-color: #D97706; }
+        .border-warm-accent { border-color: #D97706; }
+        .bg-warm-primary { background-color: #4D7C0F; } /* Green-700 */
+        .text-warm-primary { color: #4D7C0F; }
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: 9999px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            cursor: pointer;
+            color: #5a544d;
+        }
+        .nav-link.active, .nav-link:hover {
+            background-color: #4D7C0F;
+            color: #ffffff;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 320px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .stat-card {
+            background-color: white;
+            border-left: 5px solid #4D7C0F;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+    </style>
+</head>
+<body class="bg-warm-base text-warm-body">
+
+    <header id="header" class="bg-warm-base/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex items-center justify-between flex-wrap">
+                <div class="text-xl font-bold text-warm-heading">Financial Roadmap</div>
+                <div id="nav-links" class="flex items-center space-x-1 sm:space-x-2 overflow-x-auto">
+                    <a data-target="foundations" class="nav-link text-xs sm:text-sm">Foundations</a>
+                    <a data-target="age-20s" class="nav-link text-xs sm:text-sm">20s</a>
+                    <a data-target="age-30s" class="nav-link text-xs sm:text-sm">30s</a>
+                    <a data-target="age-40s" class="nav-link text-xs sm:text-sm">40s</a>
+                    <a data-target="age-50s" class="nav-link text-xs sm:text-sm">50s</a>
+                    <a data-target="age-60s" class="nav-link text-xs sm:text-sm">60s</a>
+                    <a data-target="age-70s" class="nav-link text-xs sm:text-sm">70+</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <section id="hero" class="text-center py-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-warm-heading mb-4">Navigate Your Financial Journey</h1>
+            <p class="max-w-3xl mx-auto text-lg text-warm-body">Financial planning is a dynamic process that evolves with you. This interactive guide provides tailored strategies for every life stage, helping you build a secure and prosperous future.</p>
+        </section>
+
+        <section id="foundations" class="py-16 bg-warm-section rounded-xl">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-bold text-warm-heading">Foundational Principles for All Ages</h2>
+                <p class="mt-2 max-w-2xl mx-auto text-warm-body">Mastering these core concepts provides a stable platform for financial success, regardless of your age or income.</p>
+            </div>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-warm-heading mb-3">SMART Financial Goals</h3>
+                    <p>Define goals that are Specific, Measurable, Achievable, Relevant, and Time-bound. A goal like "Save $10,000 for an emergency fund in 12 months" is far more powerful than "save more money."</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-warm-heading mb-3">Know Your Financial Health</h3>
+                    <p>Calculate your net worth (Assets - Liabilities). Track your income, expenses, and review your credit score regularly. This provides the baseline for your financial plan.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-warm-heading mb-3">Manage Debt Effectively</h3>
+                    <p>Prioritize paying down high-interest debt like credit cards. Strategies like the "debt avalanche" method can save you thousands in interest and accelerate your financial progress.</p>
+                </div>
+            </div>
+            <div class="grid lg:grid-cols-5 gap-8 mt-12 items-center">
+                <div class="lg:col-span-2 text-center lg:text-left">
+                    <h3 class="text-2xl font-bold text-warm-heading">The 50/30/20 Budget Rule</h3>
+                    <p class="mt-2 mb-4 text-warm-body">A simple yet powerful framework for managing your cash flow. Allocate 50% of your take-home pay to Needs, 30% to Wants, and 20% to Savings & Debt Repayment.</p>
+                    <div class="space-y-3">
+                        <label for="income-input" class="font-medium text-warm-heading">Enter Your Monthly Take-Home Pay:</label>
+                        <div class="flex items-center border border-gray-300 rounded-lg p-2 focus-within:ring-2 focus-within:ring-warm-accent">
+                            <span class="text-warm-body pl-2">$</span>
+                            <input type="number" id="income-input" placeholder="3500" class="w-full bg-transparent border-0 focus:ring-0 text-warm-heading">
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-3">
+                    <div class="chart-container h-80 md:h-96">
+                        <canvas id="budget-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-16 text-center">
+                <h3 class="text-2xl font-bold text-warm-heading mb-4">The Power of Compounding: Start Early!</h3>
+                <p class="max-w-3xl mx-auto mb-6 text-warm-body">Compounding allows your investments to generate earnings, which then generate their own earnings. The earlier you start, the more dramatic the growth. See the difference for yourself.</p>
+                <div class="flex flex-wrap justify-center gap-4 mb-8">
+                    <div>
+                        <label for="start-age-selector" class="block text-sm font-medium text-warm-body mb-1">Starting Age</label>
+                        <select id="start-age-selector" class="rounded-lg border-gray-300 focus:border-warm-accent focus:ring-warm-accent">
+                            <option value="25" selected>25</option>
+                            <option value="35">35</option>
+                            <option value="45">45</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="saving-rate-selector" class="block text-sm font-medium text-warm-body mb-1">Annual Savings Rate</label>
+                        <select id="saving-rate-selector" class="rounded-lg border-gray-300 focus:border-warm-accent focus:ring-warm-accent">
+                            <option value="0.05">5%</option>
+                            <option value="0.10" selected>10%</option>
+                            <option value="0.15">15%</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="compounding-chart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <div id="life-stages-content" class="space-y-16 mt-16">
+        </div>
+
+    </main>
+    
+    <footer class="bg-warm-section mt-16 py-8">
+        <div class="container mx-auto px-4 text-center text-warm-body">
+            <p>&copy; 2025 Financial Roadmap. An interactive guide for lifelong financial well-being.</p>
+            <p class="text-sm mt-2">This tool is for informational purposes only and does not constitute financial advice. Consult with a qualified professional for personalized guidance.</p>
+        </div>
+    </footer>
+
+
+<script>
+    const lifeStagesData = {
+        'age-20s': {
+            title: "Ages 20-29: Building the Foundation",
+            intro: "This foundational stage marks the transition into financial independence. It's a pivotal period for establishing robust financial habits, managing initial debts, and laying the groundwork for future wealth.",
+            stats: [
+                { label: "Savings Goal by 30", value: "1x", unit:"Income", description: "Aim to have saved the equivalent of one year's salary." },
+                { label: "Asset Allocation", value: "80-100%", unit:"Equities", description: "A long time horizon allows for a more aggressive, growth-focused portfolio." },
+                { label: "Emergency Fund", value: "3-6", unit:"Months", description: "Cover 3-6 months of living expenses in a high-yield savings account." },
+            ],
+            accordion: [
+                { title: "Key Goals", content: "Develop a budget, create a plan to pay off student loans, start retirement savings (even small amounts), build a positive credit history, and establish an emergency fund." },
+                { title: "Common Challenges", content: "Significant student loan debt, limited disposable income, and the temptation to neglect long-term retirement savings due to immediate financial pressures." },
+                { title: "Core Strategies", content: "Use budgeting apps to track cash flow. Build credit with a secured card or by paying bills consistently on time. Open a Roth or Traditional IRA and contribute regularly. Prioritize paying down high-interest debt." }
+            ],
+            chartData: {
+                labels: ['Job Loss', 'Market Losses', 'Low Earnings'],
+                setbacks: [30, 33, 20],
+                concerns: [62, 0, 0], 
+                concernLabels: ['Worry About Debt'] 
+            }
+        },
+        'age-30s': {
+            title: "Ages 30-39: Expanding Horizons",
+            intro: "Life often introduces new responsibilities like marriage, family, and homeownership. The focus shifts from achieving independence to actively building wealth and protecting your growing assets.",
+            stats: [
+                { label: "Savings Goal by 40", value: "3x", unit:"Income", description: "Your net worth should be growing steadily. Aim for 3x your annual income." },
+                { label: "Asset Allocation", value: "60-80%", unit:"Equities", description: "Balance growth with increasing stability needs as responsibilities grow." },
+                { label: "Key Focus", value: "Life", unit:"Insurance", description: "Protect your dependents and assets with term or whole life insurance." },
+            ],
+            accordion: [
+                { title: "Key Goals", content: "Grow net worth, save for a home down payment, begin college planning for children, expand and diversify your investment portfolio, and secure adequate life and disability insurance." },
+                { title: "Common Challenges", content: "Balancing multiple major goals at once (retirement, home, college) can be daunting. There's a temptation to reduce retirement savings to fund more immediate needs." },
+                { title: "Core Strategies", content: "Maintain consistent retirement contributions. Diversify investments beyond just your 401(k). Consider 529 plans for education savings. Review life and disability insurance needs to protect your family's financial future." }
+            ],
+            chartData: {
+                labels: ['Job Loss', 'Market Losses', 'Low Earnings'],
+                setbacks: [30, 33, 20], 
+                concerns: [62, 0, 0], 
+                concernLabels: ['Worry About Debt']
+            }
+        },
+        'age-40s': {
+            title: "Ages 40-54: Accelerating Growth",
+            intro: "This stage often aligns with your peak earning years, presenting a crucial window for accelerating wealth accumulation. Retirement planning becomes the central focus, alongside more complex needs like estate planning.",
+            stats: [
+                { label: "Savings Goal by 50", value: "5x", unit:"Income", description: "Leverage higher income to significantly boost your savings." },
+                { label: "Retirement Focus", value: "Maximize", unit:"Contributions", description: "Aim to hit the annual IRS limit for your 401(k), including catch-up contributions if eligible." },
+                { label: "Sandwich Generation", value: "Prioritize", unit:"Yourself", description: "Care for children and parents, but ensure your own retirement funding comes first." },
+            ],
+            accordion: [
+                { title: "Key Goals", content: "Rapidly accumulate wealth, get serious about being on track for retirement, and develop a comprehensive estate plan (wills, trusts). Aim to have 3x income saved by 40 and 5x by 50." },
+                { title: "Common Challenges", content: "Playing 'catch-up' on retirement savings, the high cost of college for children, and being in the 'sandwich generation'—financially supporting both children and aging parents." },
+                { title:"Core Strategies", content: "Increase 401(k) contributions with every pay raise. Rebalance your asset allocation. Finalize college funding plans. Review insurance needs and begin formal estate planning with legal professionals." }
+            ],
+            chartData: {
+                labels: ['Job Loss', 'Low Earnings', 'Bad Decisions'],
+                setbacks: [31, 24, 17],
+                concerns: [61, 0, 0],
+                concernLabels: ['Worry About Debt']
+            }
+        },
+         'age-50s': {
+            title: "Ages 50-60: The Pre-Retirement Runway",
+            intro: "This stage is a critical transition period. The focus shifts from aggressive wealth accumulation to wealth preservation and solidifying your retirement plan. Key decisions about Social Security and healthcare are on the horizon.",
+            stats: [
+                { label: "Savings Goal by 60", value: "7x", unit:"Income", description: "Focus on preserving capital while making final pushes in savings." },
+                { label: "Asset Allocation", value: "40-60%", unit:"Equities", description: "Reduce risk to protect your nest egg from market volatility." },
+                { label: "Catch-Up", value: "$7,500", unit:"Extra/Year", description: "Take advantage of catch-up contributions for 401(k)s for those 50+." }
+            ],
+            accordion: [
+                { title: "Key Goals", content: "Preserve wealth, meet with a financial professional to run retirement projections, plan for healthcare costs in retirement, and understand your Social Security and Medicare options." },
+                { title: "Common Challenges", content: "Health issues become a top financial concern. Market volatility is a major fear, as there's less time to recover. Job loss can be particularly disruptive. Over half of older adults report financial stress." },
+                { title: "Core Strategies", content: "Shift your portfolio to be more conservative. Maximize contributions to an HSA if eligible. Plan your Social Security claiming strategy. Sign up for Medicare on time (age 65) to avoid penalties." }
+            ],
+            chartData: {
+                labels: ['Market Losses', 'Job Loss', 'Divorce'],
+                setbacks: [39, 27, 19],
+                concerns: [48, 0, 0],
+                concernLabels: ['Worry About Debt']
+            }
+        },
+        'age-60s': {
+            title: "Ages 60-69: Financial Independence & Pre-Retirement",
+            intro: "You are on the cusp of retirement. Decisions made now about when and how to draw down your assets will shape your financial reality for decades to come. This is the time for final preparations and strategic planning.",
+            stats: [
+                { label: "Net Worth Target", value: "8-10x", unit:"Expenses", description: "Your portfolio should be able to support your planned annual living expenses." },
+                { label: "Social Security", value: "Claiming", unit:"Strategy", description: "Decide when to claim. Delaying to age 70 maximizes your monthly benefit." },
+                { label: "Healthcare", value: "Medicare", unit:"Enrollment", description: "Enroll in Medicare Parts A & B at 65. Consider Medigap or Advantage plans." }
+            ],
+             accordion: [
+                { title: "Key Goals", content: "Finalize retirement income strategy, optimize Social Security benefits, manage healthcare costs, and ensure your estate plan is fully up to date." },
+                { title: "Common Challenges", content: "Market volatility impacting a soon-to-be-tapped portfolio, rising healthcare costs, and inflation eroding purchasing power." },
+                { title: "Core Strategies", content: "Create a detailed retirement budget. Use the Social Security Administration's calculator to model benefits. Compare Medicare supplement options. Create a withdrawal strategy from your retirement accounts." }
+            ],
+            chartData: {
+                labels: ['Market Losses', 'Job Loss', 'Market Loss'],
+                setbacks: [37, 24, 22],
+                concerns: [31, 0, 0],
+                concernLabels: ['Worry About Debt']
+            }
+        },
+        'age-70s': {
+            title: "Ages 70+: Retirement & Conservation",
+            intro: "The focus shifts entirely to managing distributions from your accumulated wealth, preserving your assets to last a lifetime, and planning your legacy. Careful navigation of taxes and healthcare is key.",
+            stats: [
+                { label: "Asset Allocation", value: "70-100%", unit:"Bonds", description: "Prioritize capital preservation and steady income over growth." },
+                { label: "Key Task", value: "Manage RMDs", unit:"Tax-Efficiently", description: "Take Required Minimum Distributions from tax-deferred accounts." },
+                { label: "Legacy", value: "Estate Plan", unit:"Review", description: "Ensure your will, trusts, and power of attorney documents are current." }
+            ],
+            accordion: [
+                { title: "Key Goals", content: "Ensure a steady income stream for life, preserve assets from risk, manage Required Minimum Distributions (RMDs), and execute legacy/charitable giving plans." },
+                { title: "Common Challenges", content: "Longevity risk (outliving your money), inflation, rising healthcare costs, and managing the tax implications of RMDs." },
+                { title: "Core Strategies", content: "Create a bond-heavy portfolio. Explore strategies to minimize RMD tax burden (e.g., Qualified Charitable Distributions). Continuously review healthcare coverage. Ensure all estate planning documents are finalized and accessible to your executor." }
+            ],
+            chartData: {
+                labels: ['Job Loss', 'Low Earnings', 'Divorce'],
+                setbacks: [26, 21, 19],
+                concerns: [23, 0, 0],
+                concernLabels: ['Worry About Debt']
+            }
+        },
+    };
+
+    let budgetChart, compoundingChart;
+    const chartInstances = {};
+
+    function createBudgetChart() {
+        const ctx = document.getElementById('budget-chart').getContext('2d');
+        const income = parseFloat(document.getElementById('income-input').value) || 3500;
+        
+        const data = {
+            labels: [`Needs (50%): $${(income * 0.5).toFixed(2)}`, `Wants (30%): $${(income * 0.3).toFixed(2)}`, `Savings (20%): $${(income * 0.2).toFixed(2)}`],
+            datasets: [{
+                data: [50, 30, 20],
+                backgroundColor: ['#4D7C0F', '#93C572', '#D97706'],
+                borderColor: '#FDFBF8',
+                borderWidth: 4,
+                hoverOffset: 4
+            }]
+        };
+
+        if (budgetChart) {
+            budgetChart.data = data;
+            budgetChart.update();
+            return;
+        }
+
+        budgetChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { color: '#5a544d', font: { size: 14 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.dataset.data[context.dataIndex]}%`;
+                            }
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+    }
+
+    function createCompoundingChart() {
+        const ctx = document.getElementById('compounding-chart').getContext('2d');
+        const startAge = parseInt(document.getElementById('start-age-selector').value);
+        const savingRateKey = document.getElementById('saving-rate-selector').value;
+
+        const dataMap = {
+            25: { '0.05': 575714, '0.10': 1153286, '0.15': 1730857 },
+            35: { '0.05': 294096, '0.10': 589141, '0.15': 884187 },
+            45: { '0.05': 136842, '0.10': 274126, '0.15': 411410 }
+        };
+
+        const generateData = (start, end) => {
+            const data = [];
+            const years = 65 - start;
+            for(let i=0; i<=years; i++) {
+                data.push(end * Math.pow(i/years, 3));
+            }
+            return data;
+        };
+        
+        const labels = Array.from({length: 66 - startAge}, (_, i) => startAge + i);
+        const datasets = [];
+
+        Object.keys(dataMap).forEach(age => {
+            datasets.push({
+                label: `Start at ${age}`,
+                data: generateData(parseInt(age), dataMap[age][savingRateKey]),
+                borderColor: age == '25' ? '#4D7C0F' : (age == '35' ? '#D97706' : '#9CA3AF'),
+                backgroundColor: age == '25' ? '#4D7C0F_1A' : (age == '35' ? '#D97706_1A' : '#9CA3AF_1A'),
+                borderWidth: 3,
+                pointRadius: 0,
+                tension: 0.4,
+                hidden: parseInt(age) !== startAge
+            });
+        });
+
+
+        if(compoundingChart) {
+            compoundingChart.data.datasets.forEach((ds, i) => {
+                const age = Object.keys(dataMap)[i];
+                ds.data = generateData(parseInt(age), dataMap[age][savingRateKey]);
+                ds.hidden = parseInt(age) !== startAge;
+            });
+            compoundingChart.update();
+            return;
+        }
+
+        compoundingChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels, datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        ticks: {
+                            callback: function(value) { return '$' + (value/1000) + 'k'; },
+                            color: '#5a544d'
+                        },
+                        grid: { color: '#e5e7eb' }
+                    },
+                    x: {
+                        ticks: { color: '#5a544d' },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: { display: true, position: 'bottom', labels: { color: '#5a544d' } },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) { label += ': '; }
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function createLifeStageCharts(stageKey, data) {
+        const ctx = document.getElementById(`setbacks-chart-${stageKey}`).getContext('2d');
+        
+        if (chartInstances[stageKey]) {
+            chartInstances[stageKey].destroy();
+        }
+
+        chartInstances[stageKey] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    {
+                        label: 'Setbacks (%)',
+                        data: data.setbacks,
+                        backgroundColor: '#93C572',
+                        borderColor: '#4D7C0F',
+                        borderWidth: 1
+                    },
+                     {
+                        label: data.concernLabels[0] + ' (%)',
+                        data: data.concerns,
+                        backgroundColor: '#FBC995',
+                        borderColor: '#D97706',
+                        borderWidth: 1,
+                        hidden: data.concerns.every(item => item === 0)
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) { return value + '%'; },
+                            color: '#5a544d'
+                        }
+                    },
+                    y: { ticks: { color: '#5a544d' } }
+                },
+                plugins: {
+                    legend: { position: 'top', labels: { color: '#5a544d' } },
+                    title: { display: true, text: 'Top Financial Setbacks & Concerns', color: '#38342E', font: { size: 16 } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.dataset.label}: ${context.raw}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function populateLifeStages() {
+        const container = document.getElementById('life-stages-content');
+        container.innerHTML = '';
+        Object.keys(lifeStagesData).forEach(key => {
+            const stage = lifeStagesData[key];
+            const section = document.createElement('section');
+            section.id = key;
+            section.className = 'py-12 scroll-mt-20';
+
+            let statsHtml = stage.stats.map(stat => `
+                <div class="stat-card text-center">
+                    <p class="text-4xl font-bold text-warm-primary">${stat.value}<span class="text-2xl">${stat.unit}</span></p>
+                    <p class="text-md font-semibold text-warm-heading mt-2">${stat.label}</p>
+                    <p class="text-sm text-warm-body mt-1">${stat.description}</p>
+                </div>
+            `).join('');
+
+            let accordionHtml = stage.accordion.map((item, index) => `
+                <div class="border-b border-gray-200">
+                    <button class="accordion-toggle w-full text-left py-4 px-2 flex justify-between items-center">
+                        <span class="font-semibold text-warm-heading">${item.title}</span>
+                        <span class="transform transition-transform duration-300 text-warm-primary font-bold text-xl">+</span>
+                    </button>
+                    <div class="accordion-content px-2 pb-4 text-warm-body">
+                        ${item.content}
+                    </div>
+                </div>
+            `).join('');
+
+            section.innerHTML = `
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-warm-heading">${stage.title}</h2>
+                    <p class="mt-2 max-w-2xl mx-auto text-warm-body">${stage.intro}</p>
+                </div>
+                <div class="grid md:grid-cols-3 gap-6 mb-12">
+                    ${statsHtml}
+                </div>
+                <div class="grid md:grid-cols-5 gap-8 items-start">
+                    <div class="md:col-span-2">
+                        <h3 class="text-2xl font-bold text-warm-heading mb-4">Key Considerations</h3>
+                        <div class="accordion-container">${accordionHtml}</div>
+                    </div>
+                    <div class="md:col-span-3">
+                         <div class="chart-container h-96">
+                            <canvas id="setbacks-chart-${key}"></canvas>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(section);
+            createLifeStageCharts(key, stage.chartData);
+        });
+
+        document.querySelectorAll('.accordion-toggle').forEach(button => {
+            button.addEventListener('click', () => {
+                const content = button.nextElementSibling;
+                const icon = button.querySelector('span:last-child');
+                button.parentElement.parentElement.querySelectorAll('.accordion-content').forEach(otherContent => {
+                    if (otherContent !== content) {
+                        otherContent.style.maxHeight = null;
+                        otherContent.previousElementSibling.querySelector('span:last-child').textContent = '+';
+                        otherContent.previousElementSibling.querySelector('span:last-child').classList.remove('rotate-45');
+                    }
+                });
+                if (content.style.maxHeight) {
+                    content.style.maxHeight = null;
+                    icon.textContent = '+';
+                    icon.classList.remove('rotate-45');
+                } else {
+                    content.style.maxHeight = content.scrollHeight + "px";
+                    icon.textContent = '+';
+                    icon.classList.add('rotate-45');
+                }
+            });
+        });
+    }
+
+    function setupEventListeners() {
+        document.getElementById('income-input').addEventListener('input', createBudgetChart);
+        document.getElementById('start-age-selector').addEventListener('change', createCompoundingChart);
+        document.getElementById('saving-rate-selector').addEventListener('change', createCompoundingChart);
+
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                const targetId = e.target.getAttribute('data-target');
+                document.getElementById(targetId).scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+        
+        const sections = document.querySelectorAll('main section[id]');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    navLinks.forEach(link => {
+                        link.classList.toggle('active', link.getAttribute('data-target') === entry.target.id);
+                    });
+                }
+            });
+        }, { rootMargin: '-20% 0px -80% 0px', threshold: 0 });
+
+        sections.forEach(section => observer.observe(section));
+    }
+    
+    window.addEventListener('load', () => {
+        createBudgetChart();
+        createCompoundingChart();
+        populateLifeStages();
+        setupEventListeners();
+    });
+
+</script>
+</body>
+</html>
