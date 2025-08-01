@@ -1,0 +1,50 @@
+var PIRManagerEnhanced = Class.create();
+PIRManagerEnhanced.prototype = Object.extendsObject(PIRManager, {
+
+    initialize: function() {
+        // Call parent constructor
+        PIRManagerSNC.prototype.initialize.call(this);
+        // Initialize V2 summary utility for enhanced functionality
+        this.pirSummaryV2 = new PostMajorIncidentSummaryV2();
+    },
+
+    /**
+     * Enhanced version of syncIncidentSummary with updated requirements:
+     * - Adds MI Accepted Time (promoted_on field)
+     * - Removes description field
+     * - Replaces close_notes with service resume actions prompt
+     * Uses PostMajorIncidentSummaryV2 utility for consistency
+     */
+    syncIncidentSummary: function(incidentSysID) {
+        // Delegate to the V2 utility which contains the enhanced logic
+        this.pirSummaryV2.syncIncidentSummary(incidentSysID);
+    },
+
+    /**
+     * Enhanced version of fetchIncidentRelatedData that can optionally use the enhanced summary
+     */
+    fetchIncidentRelatedDataEnhanced: function(incidentSysID) {
+        // Get the base data from parent class
+        var baseData = PIRManagerSNC.prototype.fetchIncidentRelatedData.call(this, incidentSysID);
+        
+        // Override the summary with enhanced version if needed
+        var pGr = this.pirUtil.getPirByIncidentSysId(incidentSysID);
+        if (pGr.next()) {
+            // Check if we need to generate enhanced summary
+            var currentSummary = pGr.getValue('report_draft');
+            if (!currentSummary || currentSummary.indexOf('MI Accepted Time:') === -1) {
+                // Generate enhanced summary using V2 utility
+                this.syncIncidentSummary(incidentSysID);
+                // Refresh the PIR record to get updated summary
+                pGr.query();
+                if (pGr.next()) {
+                    baseData['summary'] = pGr.getValue('report_draft');
+                }
+            }
+        }
+        
+        return baseData;
+    },
+
+    type: 'PIRManagerEnhanced'
+});
