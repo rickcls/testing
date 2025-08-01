@@ -3,7 +3,7 @@ PIRManagerEnhanced.prototype = Object.extendsObject(PIRManager, {
 
     initialize: function() {
         // Call parent constructor
-        PIRManagerSNC.prototype.initialize.call(this);
+        PIRManager.prototype.initialize.call(this);
         // Initialize V2 summary utility for enhanced functionality
         this.pirSummaryV2 = new PostMajorIncidentSummaryV2();
     },
@@ -25,7 +25,7 @@ PIRManagerEnhanced.prototype = Object.extendsObject(PIRManager, {
      */
     fetchIncidentRelatedDataEnhanced: function(incidentSysID) {
         // Get the base data from parent class
-        var baseData = PIRManagerSNC.prototype.fetchIncidentRelatedData.call(this, incidentSysID);
+        var baseData = PIRManager.prototype.fetchIncidentRelatedData.call(this, incidentSysID);
         
         // Override the summary with enhanced version if needed
         var pGr = this.pirUtil.getPirByIncidentSysId(incidentSysID);
