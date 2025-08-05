@@ -1,0 +1,109 @@
+{
+	"contextual": [
+		"record",
+		"kb_view"
+	],
+	"newTabMenu": [
+		{
+			"label": {
+				"translatable": true,
+				"message": "New Interaction"
+			},
+			"routeInfo": {
+				"route": "record",
+				"fields": {
+					"table": "interaction",
+					"sysId": "-1"
+				},
+				"multiInstField": "sysId"
+			},
+			"condition": {
+				"tableDescription": {
+					"table": "interaction",
+					"canCreate": true
+				}
+			}
+		},
+		{
+			"label": {
+				"translatable": true,
+				"message": "New Incident"
+			},
+			"routeInfo": {
+				"route": "record",
+				"fields": {
+					"table": "incident",
+					"sysId": "-1"
+				},
+				"multiInstField": "sysId"
+			},
+			"condition": {
+				"tableDescription": {
+					"table": "incident",
+					"canCreate": true
+				}
+			}
+		},
+		{
+			"label": {
+				"translatable": true,
+				"message": "New Change Request"
+			},
+			"routeInfo": {
+				"route": "create-change-request-page",
+				"fields": {},
+				"multiInstField": ""
+			},
+			"condition": {
+				"tableDescription": {
+					"table": "change_request",
+					"canCreate": true
+				}
+			}
+		},
+		{
+			"label": {
+				"translatable": true,
+				"message": "New Knowledge Article"
+			},
+			"routeInfo": {
+				"route": "kb_template_selector_modal",
+				"fields": {
+					"table": "kb_knowledge"
+				},
+				"multiInstField": ""
+			},
+			"condition": {
+				"tableDescription": {
+					"table": "kb_knowledge",
+					"canCreate": true
+				}
+			}
+
+		},
+{
+			"label": {
+				"translatable": true,
+				"message": "New Generic Request"
+			},
+			"routeInfo": {
+				"route": "record",
+				"fields": {
+					"table": "sc_cat_item",
+					"sysId": "c4372dfadb155f0069e97b088c961939"
+				},
+				"multiInstField": "sysId"
+			},
+			"condition": {
+				"tableDescription": {
+					"table": "",
+					"canCreate": true
+				}
+			}
+
+		}
+
+	],
+	"maxMainTabLimit": 20,
+	"maxTotalSubTabLimit": 30
+}
