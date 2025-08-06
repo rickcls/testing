@@ -1,0 +1,18 @@
+(function executeRule(current, previous) {
+    
+    try {
+        var incidentSysId = current.incident_ref.toString();
+        
+        if (incidentSysId) {
+            // Immediately generate V2 content after PIR record is created
+            var pirManager = new PIRManagerEnhanced();
+            pirManager.syncIncidentSummary(incidentSysId);
+            
+            gs.info('V2 content auto-generated for new PIR: ' + current.sys_id + ' (Incident: ' + incidentSysId + ')');
+        }
+        
+    } catch (error) {
+        gs.error('Error auto-generating V2 content for PIR: ' + error.message);
+    }
+    
+})(current, previous);
