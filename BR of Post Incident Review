@@ -1,0 +1,115 @@
+(function executeRule(current, previous) {
+    
+    try {
+        // Get the incident sys_id from the PIR record
+        var incidentSysId = current.incident_ref.toString();
+        
+        if (!incidentSysId || incidentSysId == '') {
+            gs.error('PIR Business Rule: No incident reference found');
+            return;
+        }
+        
+        // 1. Set default state (required by UI line 384: pirIncidentRecord.getDisplayValue('state'))
+        if (!current.state || current.state == '') {
+            current.state = 'draft';
+        }
+        
+        // 2. Initialize timeline_settings (required by UI lines 330-337)
+        if (!current.timeline_settings || current.timeline_settings == '') {
+            var timelineSettings = {
+                showTimelineInFinalReport: false, // Matches your UI default (line 331)
+                eventSources: {
+                    milestones: true,
+                    flaggedActivities: true,
+                    customEvents: true
+                }
+            };
+            current.timeline_settings = JSON.stringify(timelineSettings);
+        }
+        
+        // 3. Initialize timeline_events (required by PIRManagerEnhanced.fetchPreviewPageData)
+        if (!current.timeline_events || current.timeline_events == '') {
+            var initialTimeline = {
+                events: []
+            };
+            current.timeline_events = JSON.stringify(initialTimeline);
+        }
+        
+        // 4. Generate Enhanced V2 Summary Content (required by UI line 476: incidentRelatedData.summary)
+        if (!current.report_draft || current.report_draft == '') {
+            
+            // Get incident data for content generation
+            var incidentGr = new GlideRecord('incident');
+            if (incidentGr.get(incidentSysId)) {
+                
+                // Use the same data extraction as PostMajorIncidentSummaryV2
+                var shortDescription = incidentGr.getDisplayValue('short_description') || '--';
+                var businessImpact = incidentGr.getDisplayValue('business_impact') || '--';
+                var miAcceptedTime = incidentGr.getDisplayValue('promoted_on') || '--';
+                var serviceResumeActions = 'Please input: What actions have been taken to resume the service?';
+                var numberinc = incidentGr.getDisplayValue('number') || '--';
+                
+                // Generate enhanced V2 content using the same logic as PostMajorIncidentSummaryV2
+                var enhancedContent = generateEnhancedV2Content(
+                    shortDescription, 
+                    businessImpact, 
+                    miAcceptedTime, 
+                    serviceResumeActions, 
+                    numberinc
+                );
+                
+                current.report_draft = enhancedContent;
+                
+            } else {
+                gs.error('PIR Business Rule: Incident not found with sys_id: ' + incidentSysId);
+                current.report_draft = 'Error: Incident data not available';
+            }
+        }
+        
+        gs.info('PIR record initialized for enhanced UI - Incident: ' + incidentSysId);
+        
+    } catch (error) {
+        gs.error('PIR Business Rule Error: ' + error.message + ' - Stack: ' + error.stack);
+    }
+    
+    // Helper function to generate Enhanced V2 content (matches PostMajorIncidentSummaryV2 logic)
+    function generateEnhancedV2Content(shortDescription, businessImpact, miAcceptedTime, serviceResumeActions, numberinc) {
+        
+        // Style constants (from PostIncidentReportConstants.INCIDENT_SUMMARY_STYLES)
+        var styles = {
+            header: "color: var(--now-color_text--primary);display: block;margin-bottom:8px;font-family:Lato;font-size:16px;font-weight:600;line-height:19px;letter-spacing:0px;text-align:left",
+            shortDescription: "color: var(--now-color_text--primary);display: block;margin-bottom:8px;font-family:Lato;font-size:16px;font-weight:600;line-height:19px;letter-spacing:0px;text-align:left;word-break:break-all;",
+            plainText: "color: var(--now-color_text--primary);display: block;margin-bottom:24px;font-family:Source Sans Pro;font-size:16px;font-weight:400;line-height:20px;letter-spacing:0px;text-align:left;word-break:break-all;",
+            lastSectionText: "color: var(--now-color_text--primary);display: block;font-family:Source Sans Pro;font-size:16px;font-weight:400;line-height:20px;letter-spacing:0px;text-align:left;word-break:break-all;"
+        };
+        
+        var clp_summary_style = "display: block;margin-bottom:8px;font-family:Lato;font-size:16px;font-weight:bold;line-height:19px;letter-spacing:0px;text-align:left";
+        
+        // Build content sections (matches PostMajorIncidentSummaryV2._getPostIncidentSummary)
+        var styleHeader = '<span style="' + clp_summary_style + '">';
+        var summaryInfo = '</span><span style="' + styles.shortDescription + '">' + numberinc + ' - ' + shortDescription + '</span><span style="' + clp_summary_style + '">MI Accepted Time:</span><span style="' + styles.plainText + '">' + miAcceptedTime + '</span><span style="' + clp_summary_style + '">';
+        var impactInfo = '</span><span style="' + styles.plainText + '">' + businessImpact + '</span><span style="' + clp_summary_style + '">' + serviceResumeActions + '</span>';
+        
+        // CLP Impact Analysis Table (same as PostMajorIncidentSummaryV2)
+        var clpimpactareas = '<table style="border-collapse: collapse; width: 100%; height: 259.031px; background-color: #ecf0f1; border-color: #000000; border-style: solid"><colgroup><col style="width: 25%"/><col style="width: 25%" /><col style="width: 25%;"/><col style="width: 25%;"/></colgroup><tbody><tr style="height: 32.3125px;"><td style="height: 32.3125px; width: 160pt; border-color: #000000; border-style: solid; text-align: center;"><p><strong><span style="color: #236fa1;">CLP Impact</span></strong></p></td><td style="width: 197pt; height: 32.3125px; text-align: center; border-color: #000000; border-style: solid;"><p><strong><span style="color: #236fa1;">Root Cause</span></strong></p></td><td style="width: 202pt; height: 32.3125px; text-align: center; border-color: #000000; border-style: solid;"><p><strong><span style="color: #236fa1;">Learnings</span></strong></p></td><td style="width: 371pt; height: 32.3125px; text-align: center; border-color: #000000; border-style: solid;"><p><strong><span style="color: #236fa1;">Follow Up Actions</span></strong></p></td></tr><tr style="height: 226.719px;"><td style="height: 226.719px; width: 160pt; border-color: #000000; border-style: solid;"><ul style="list-style-position: inside;"><li>What is/are the impact?</li></ul></td><td style="width: 197pt; height: 226.719px; border-color: #000000; border-style: solid;"><ul style="list-style-position: inside;"><li>What is/are the root cause?</li></ul></td><td style="width: 202pt; height: 226.719px; border-color: #000000; border-style: solid;"><ul style="list-style-position: inside;"><li>What is/are the lesson learn?</li></ul></td><td style="width: 371pt; height: 226.719px; border-color: #000000; border-style: solid;"><ul style="list-style-position: inside;"><li>What is/are the follow up actions?</li></ul></td></tr></tbody></table><p>&nbsp;</p>';
+        
+        var clpimpactareasstyles = '<p>&nbsp;</p></span><span style="' + styles.lastSectionText + '">' + clpimpactareas + '</span><p>&nbsp;</p>';
+        
+        // Additional sections
+        var obersvations = '<p><span style="display: block; margin-bottom: 8px; font-family: Lato; font-size: 16px; font-weight: 600; line-height: 19px; letter-spacing: 0px; text-align: left;"><strong>Other Observations</strong></span></p><p>&nbsp;</p>';
+        var wantwentwellstyles = '<p>&nbsp;</p><p><span style="display: block; margin-bottom: 8px; font-family: Lato; font-size: 16px; font-weight: 600; line-height: 19px; letter-spacing: 0px; text-align: left;"><strong>What went well</strong></span></p><ul style=""list-style-position: inside;""><li>Input the details</li><li>&nbsp;</li></ul><p>&nbsp;</p>';
+        var wantwentnotwellstyles = '<p><span style="display: block; margin-bottom: 8px; font-family: Lato; font-size: 16px; font-weight: 600; line-height: 19px; letter-spacing: 0px; text-align: left;"><strong>What did not go well</strong></span></p><ul style=""list-style-position: inside;""><li>Input the details</li><li>&nbsp;</li></ul><p>&nbsp;</p>';
+        
+        // Combine all sections (matches PostMajorIncidentSummaryV2 template)
+        return gs.getMessage("{0}Major Incident{1}{2}{3}{4}{5}{6}", [
+            styleHeader, 
+            summaryInfo, 
+            impactInfo, 
+            clpimpactareasstyles, 
+            obersvations, 
+            wantwentwellstyles, 
+            wantwentnotwellstyles
+        ]);
+    }
+    
+})(current, previous);
