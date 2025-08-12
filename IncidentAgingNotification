@@ -1,1 +1,179 @@
+var IncidentAgingNotifier = Class.create();
+IncidentAgingNotifier.prototype = {
+  initialize: function() {
+    this.table = 'incident';
+    this.instanceUrl = gs.getProperty('glide.servlet.uri') || '';
+    this.stateNameToValue = { 'New': '1', 'In Progress': '2', 'On Hold': '3' };
+    this.stateKeys = ['New', 'In Progress', 'On Hold'];
+    this.outstandingBuckets = [
+      { id: 'd7_13', label: '7–13 Days', encoded: 'opened_at>=javascript:gs.daysAgoStart(13)^opened_at<=javascript:gs.daysAgoEnd(7)' },
+      { id: 'd14_20', label: '14–20 Days', encoded: 'opened_at>=javascript:gs.daysAgoStart(20)^opened_at<=javascript:gs.daysAgoEnd(14)' },
+      { id: 'd21_27', label: '21–27 Days', encoded: 'opened_at>=javascript:gs.daysAgoStart(27)^opened_at<=javascript:gs.daysAgoEnd(21)' },
+      { id: 'd28_plus', label: '≥28 Days', encoded: 'opened_at<=javascript:gs.daysAgoEnd(28)' }
+    ];
+    this.noUpdateBuckets = [
+      { id: 'lt7', label: '<7 Days', encoded: 'sys_updated_on>=javascript:gs.daysAgoStart(6)' },
+      { id: 'd7_13', label: '7–13 Days', encoded: 'sys_updated_on>=javascript:gs.daysAgoStart(13)^sys_updated_on<=javascript:gs.daysAgoEnd(7)' },
+      { id: 'gte14', label: '≥14 Days', encoded: 'sys_updated_on<=javascript:gs.daysAgoEnd(14)' }
+    ];
+  },
 
+  findTargetGroups: function() {
+    var out = [];
+    var ga = new GlideAggregate(this.table);
+    ga.addEncodedQuery('active=true^stateIN1,2,3^assignment_groupISNOTEMPTY^opened_at<=javascript:gs.daysAgoEnd(7)');
+    ga.groupBy('assignment_group');
+    ga.addAggregate('COUNT');
+    ga.query();
+    while (ga.next()) {
+      var g = ga.getValue('assignment_group');
+      if (g) out.push(g);
+    }
+    return out;
+  },
+
+  getGroupManagerSysId: function(groupSysId) {
+    var g = new GlideRecord('sys_user_group');
+    if (g.get(groupSysId)) return g.getValue('manager') || '';
+    return '';
+  },
+
+  collectGroupCounts: function(groupSysId) {
+    var counts = {};
+    for (var i = 0; i < this.noUpdateBuckets.length; i++) {
+      var nud = this.noUpdateBuckets[i].id;
+      counts[nud] = {};
+      for (var j = 0; j < this.outstandingBuckets.length; j++) {
+        var os = this.outstandingBuckets[j].id;
+        counts[nud][os] = { 'New': 0, 'In Progress': 0, 'On Hold': 0 };
+      }
+    }
+
+    var now = new GlideDateTime();
+    var gr = new GlideRecord(this.table);
+    gr.addEncodedQuery('active=true^stateIN1,2,3^assignment_group=' + groupSysId + '^opened_at<=javascript:gs.daysAgoEnd(7)');
+    gr.query();
+    while (gr.next()) {
+      var opened = new GlideDateTime(gr.getValue('opened_at'));
+      var updated = new GlideDateTime(gr.getValue('sys_updated_on'));
+      var ageDays = Math.floor(GlideDateTime.subtract(now, opened).getNumericValue() / 86400000);
+      var noUpdateDays = Math.floor(GlideDateTime.subtract(now, updated).getNumericValue() / 86400000);
+      var ob = this._bucketizeOutstanding(ageDays);
+      var nb = this._bucketizeNoUpdate(noUpdateDays);
+      if (!ob || !nb) continue;
+
+      var sv = gr.getValue('state');
+      var sk = this._stateKey(sv);
+      if (!sk) continue;
+
+      counts[nb][ob][sk] += 1;
+    }
+    return counts;
+  },
+
+  renderGroupHtml: function(groupSysId) {
+    var g = new GlideRecord('sys_user_group');
+    var groupName = (g.get(groupSysId) && g.name) ? g.getDisplayValue('name') : 'Assignment Group';
+    var counts = this.collectGroupCounts(groupSysId);
+    if (!this._hasAny(counts)) return '<p>No outstanding incidents for ' + GlideStringUtil.escapeHTML(groupName) + '.</p>';
+
+    var html = [];
+    html.push('<style>');
+    html.push('table.inc-aging{border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif;font-size:12px}');
+    html.push('table.inc-aging th,table.inc-aging td{border:1px solid #ddd;padding:6px;text-align:center}');
+    html.push('table.inc-aging th{background:#f5f6f8}');
+    html.push('table.inc-aging td.label{font-weight:bold;text-align:left}');
+    html.push('table.inc-aging a{color:#0b63ce;text-decoration:none}');
+    html.push('</style>');
+
+    html.push('<h3 style="margin:6px 0 8px 0;">' + GlideStringUtil.escapeHTML(groupName) + ' – Weekly Outstanding Incidents</h3>');
+    html.push('<table class="inc-aging">');
+
+    html.push('<tr>');
+    html.push('<th rowspan="2" class="label">No Update Days</th>');
+    html.push('<th rowspan="2" class="label">Status</th>');
+    for (var i = 0; i < this.outstandingBuckets.length; i++)
+      html.push('<th colspan="3">' + GlideStringUtil.escapeHTML(this.outstandingBuckets[i].label) + '</th>');
+    html.push('</tr>');
+
+    html.push('<tr>');
+    for (var j = 0; j < this.outstandingBuckets.length; j++)
+      for (var k = 0; k < this.stateKeys.length; k++)
+        html.push('<th>' + this.stateKeys[k] + '</th>');
+    html.push('</tr>');
+
+    for (var r = 0; r < this.noUpdateBuckets.length; r++) {
+      var row = this.noUpdateBuckets[r];
+      html.push('<tr>');
+      html.push('<td class="label" rowspan="3">' + row.label + '</td>');
+
+      for (var s = 0; s < this.stateKeys.length; s++) {
+        var stateKey = this.stateKeys[s];
+        if (s > 0) html.push('<tr>');
+        html.push('<td class="label">' + stateKey + '</td>');
+
+        for (var b = 0; b < this.outstandingBuckets.length; b++) {
+          var bucket = this.outstandingBuckets[b];
+          var n = counts[row.id][bucket.id][stateKey] || 0;
+          if (n > 0) {
+            var q = this._buildEncodedQuery(groupSysId, bucket.id, stateKey, row.id);
+            html.push('<td><a href="' + this._listUrl(q) + '">' + n + '</a></td>');
+          } else {
+            html.push('<td>0</td>');
+          }
+        }
+        html.push('</tr>');
+      }
+    }
+    html.push('</table>');
+    return html.join('');
+  },
+
+  _bucketizeOutstanding: function(d) {
+    if (d >= 7 && d <= 13) return 'd7_13';
+    if (d >= 14 && d <= 20) return 'd14_20';
+    if (d >= 21 && d <= 27) return 'd21_27';
+    if (d >= 28) return 'd28_plus';
+    return '';
+  },
+
+  _bucketizeNoUpdate: function(d) {
+    if (d < 7) return 'lt7';
+    if (d <= 13) return 'd7_13';
+    return 'gte14';
+  },
+
+  _stateKey: function(v) {
+    if (v == '1') return 'New';
+    if (v == '2') return 'In Progress';
+    if (v == '3') return 'On Hold';
+    return '';
+  },
+
+  _buildEncodedQuery: function(groupSysId, outId, stateKey, nuId) {
+    var outstanding = this._findById(this.outstandingBuckets, outId).encoded;
+    var noupdate = this._findById(this.noUpdateBuckets, nuId).encoded;
+    var stateValue = this.stateNameToValue[stateKey];
+    var base = 'active=true^state=' + stateValue + '^assignment_group=' + groupSysId;
+    return base + '^' + outstanding + '^' + noupdate;
+  },
+
+  _listUrl: function(encodedQuery) {
+    return this.instanceUrl + 'incident_list.do?sysparm_query=' + encodeURIComponent(encodedQuery);
+  },
+
+  _findById: function(arr, id) {
+    for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i];
+    return { encoded: '' };
+  },
+
+  _hasAny: function(cnt) {
+    for (var nud in cnt)
+      for (var os in cnt[nud])
+        for (var st in cnt[nud][os])
+          if (cnt[nud][os][st] > 0) return true;
+    return false;
+  },
+
+  type: 'IncidentAgingNotifier'
+};
